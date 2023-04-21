@@ -28,7 +28,6 @@ const APISelect = ({ API, setAPI }: APISelectProps) => {
     setAPI(e.target.value);
     // unfocus
     e.target.blur();
-    autoWidth(e.target);
   };
 
   // set auto width using a temp select element
@@ -83,6 +82,11 @@ const APISelect = ({ API, setAPI }: APISelectProps) => {
     fetchApiList();
   }, []);
 
+  // auto width on API change
+  useEffect(() => {
+    ref.current?.options.length && autoWidth(ref.current);
+  }, [API]);
+
   return (
     <div className="absolute right-[0.2rem] top-[0.2rem] flex gap-x-1 md:static md:-mt-5 md:mr-1">
       <label htmlFor="api" className="text-xs text-white">
@@ -91,9 +95,7 @@ const APISelect = ({ API, setAPI }: APISelectProps) => {
       <select
         id="api"
         className="rounded-xl px-1 text-xs transition-all duration-500"
-        onChange={(e) => {
-          handleChange(e);
-        }}
+        onChange={handleChange}
         defaultValue={API}
         ref={ref}
       >
