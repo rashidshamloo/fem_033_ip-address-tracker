@@ -1,8 +1,9 @@
 {
-  "name": "fem_032_huddle-landing-page-with-curved-sections",
+  "name": "fem_033_ip-address-tracker",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "Frontend for 'IP Address Tracker' challenge using React.js + Tailwind CSS + Leaflet.js",
   "scripts": {
     "dev": "vite",
     "predeploy": "npm run build",
@@ -10,8 +11,19 @@
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
+  "keywords": [
+    "api",
+    "express",
+    "cors",
+    "rate-limit",
+    "ip",
+    "geolocation"
+  ],
+  "author": "Rashid Shamloo",
+  "url": "https://github.com/rashidshamloo",
+  "email": "rashidshamloo@gmail.com",
+  "license": "GPL-3.0",
   "dependencies": {
-    "framer-motion": "^10.11.5",
     "ip-regex": "^5.0.0",
     "leaflet": "^1.9.3",
     "react": "^18.2.0",

@@ -1,4 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
+// API data
+const API_URL = import.meta.env.VITE_API_URL;
+const API_TOKEN = import.meta.env.VITE_API_TOKEN;
+
+// toasify
+import { toast } from "react-toastify";
+
+// utility
+import fetchTimeout from "../utility/utility";
 
 // interfaces
 interface APISelectProps {
@@ -7,7 +17,11 @@ interface APISelectProps {
 }
 
 const APISelect = ({ API, setAPI }: APISelectProps) => {
+  //state
+  const [apiList, setApiList] = useState<Array<{ [key: string]: string }>>([]);
+  // ref
   const ref = useRef<HTMLSelectElement>(null);
+
   // handle select change
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     // set state
@@ -27,14 +41,47 @@ const APISelect = ({ API, setAPI }: APISelectProps) => {
     tempSelect.appendChild(tempOption);
     element.after(tempSelect);
     const width = tempSelect.getBoundingClientRect().width;
-    element.style.width = String(width + 7) + "px";
+    element.style.width = String(width + 8) + "px";
     tempSelect.remove();
   };
 
-  // autoWidth on first load
+  // refetch API list
+  const reFetch = (sec: number) => {
+    toast.error(
+      `Error in fetching API list!\nTrying again in ${sec} seconds.`,
+      {
+        autoClose: sec * 1000,
+        theme: "light",
+      }
+    );
+    setTimeout(fetchApiList, sec * 1000);
+  };
+
+  // gets API list and updates state
+  const fetchApiList = async () => {
+    const url = API_URL + "list?token=" + API_TOKEN;
+    let error = false;
+    let res;
+    try {
+      res = await fetchTimeout(url);
+    } catch (_: any) {
+      error = true;
+    }
+    // refetch on error
+    if (!res || !res.ok || error) {
+      reFetch(4);
+    } else {
+      // set API list and API states
+      const tempApiList = await res.json();
+      setApiList(tempApiList);
+      setAPI(tempApiList[0].name);
+    }
+  };
+
+  // get API list on first load
   useEffect(() => {
-    if (ref.current) autoWidth(ref.current);
-  }, [ref.current]);
+    fetchApiList();
+  }, []);
 
   return (
     <div className="absolute right-[0.2rem] top-[0.2rem] flex gap-x-1 md:static md:-mt-5 md:mr-1">
@@ -50,11 +97,13 @@ const APISelect = ({ API, setAPI }: APISelectProps) => {
         defaultValue={API}
         ref={ref}
       >
-        <option value="ip-api">ip-api.com</option>
-        <option value="ipify">ipify.org</option>
-        <option value="ip2location">ip2location.io (IP Only)</option>
-        <option value="ipgeolocation">ipgeolocation.io (IP Only)</option>
-        <option value="ipwho">ipwho.is (IP Only)</option>
+        {apiList.map((item, index) => {
+          return (
+            <option value={item.name} key={index}>
+              {item.domain}
+            </option>
+          );
+        })}
       </select>
     </div>
   );

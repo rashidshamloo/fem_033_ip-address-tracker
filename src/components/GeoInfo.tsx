@@ -33,7 +33,10 @@ const GeoInfo = ({ ipInfo, loading }: geoInfoProps) => {
               <Loading />
             ) : (
               <p className="whitespace-pre-line break-all">
-                {ipInfo?.timezone}
+                {ipInfo?.timezone &&
+                  (ipInfo.timezone.length > 14
+                    ? ipInfo.timezone.replace("/", "/\n")
+                    : ipInfo.timezone)}
               </p>
             )}
           </div>

@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+
+// react-leaflet
 import { useMap } from "react-leaflet";
 
 // react-responsive
@@ -7,7 +9,6 @@ import { useMediaQuery } from "react-responsive";
 // types
 import { position as positionType } from "../App";
 import { LatLngExpression } from "leaflet";
-
 
 // interfaces
 interface setMapCenterProps {
@@ -23,10 +24,13 @@ const SetMapCenter = ({
   firstMapLoad = false,
   setfirstMapLoad,
 }: setMapCenterProps) => {
+  // state
   const [moveEnded, setMoveEnded] = useState<boolean>(false);
+  // map
   const map = useMap();
+  // media query to change map center offset according to screen size
   const matches = useMediaQuery({ query: "(min-width:600px)" });
-  if (position) {
+  if (position && !(position.lat === 0 && position.lng === 0)) {
     // move position according to screen sie to center it inside the visible area
     const newPosition: LatLngExpression = [
       Number(position.lat) + (matches ? 0.002 : 0.0075),

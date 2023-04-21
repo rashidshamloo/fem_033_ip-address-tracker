@@ -28,34 +28,38 @@ function App() {
 
   return (
     <>
-      <Header setPosition={setPosition} setLocation={setLocation} setMapLoading={setMapLoading}/>
+      <Header
+        setPosition={setPosition}
+        setLocation={setLocation}
+        setMapLoading={setMapLoading}
+      />
       <main className="relative flex-1">
-      {mapLoading && <Loading map={true} />}
-      <div className={"h-full " + (firstMapLoad ? "opacity-0" : "")}>
-        <MapContainer
-          className="z-[0] h-full"
-          center={[38.8693, -77.0536]}
-          zoom={13}
-          scrollWheelZoom={false}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <Marker
-            position={
-              position ? [position.lat, position.lng] : [38.8693, -77.0536]
-            }
+        {mapLoading && <Loading map={true} />}
+        <div className={"h-full " + (firstMapLoad ? "opacity-0" : "")}>
+          <MapContainer
+            className="z-[0] h-full"
+            center={[38.8693, -77.0536]}
+            zoom={13}
+            scrollWheelZoom={false}
           >
-            <Popup>{location}</Popup>
-          </Marker>
-          <SetMapCenter
-            position={position}
-            mode="fly"
-            firstMapLoad={firstMapLoad}
-            setfirstMapLoad={setFirstMapLoad}
-          />
-        </MapContainer>
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <Marker
+              position={
+                position ? [position.lat, position.lng] : [38.8693, -77.0536]
+              }
+            >
+              <Popup>{location}</Popup>
+            </Marker>
+            <SetMapCenter
+              position={position}
+              mode="fly"
+              firstMapLoad={firstMapLoad}
+              setfirstMapLoad={setFirstMapLoad}
+            />
+          </MapContainer>
         </div>
       </main>
       <Credits />

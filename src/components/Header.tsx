@@ -1,25 +1,3 @@
-const API_KEYS = {
-  ipify: import.meta.env.VITE_API_KEY_IPIFY,
-  ipgeolocation: import.meta.env.VITE_API_KEY_IPGEOLOCATION,
-  ip2location: import.meta.env.VITE_API_KEY_IP2LOCATION,
-};
-
-// API URL
-const API_URL = {
-  "ip-api": "http://ip-api.com/json/",
-  ipify:
-    "https://geo.ipify.org/api/v2/country,city?apiKey=" + API_KEYS["ipify"],
-  ipgeolocation:
-    "https://api.ipgeolocation.io/ipgeo?apiKey=" +
-    API_KEYS["ipgeolocation"] +
-    "&ip=",
-  ipwho: "http://ipwho.is/",
-  ip2location:
-    "https://api.ip2location.io/?key=" +
-    API_KEYS["ip2location"] +
-    "&format=json",
-};
-
 // React
 import { useEffect, useRef, useState } from "react";
 
@@ -37,8 +15,9 @@ import "react-toastify/dist/ReactToastify.css";
 import GeoInfo from "./GeoInfo";
 import APISelect from "./APISelect";
 
-// types
-import { position } from "../App";
+// API data
+const API_URL = import.meta.env.VITE_API_URL;
+const API_TOKEN = import.meta.env.VITE_API_TOKEN;
 
 // interfaces
 export interface ipInfo {
@@ -46,6 +25,8 @@ export interface ipInfo {
   location: string;
   timezone: string;
   isp: string;
+  lat?: number;
+  lng?: number;
 }
 
 interface headerProps {
@@ -59,7 +40,7 @@ const Header = ({ setPosition, setLocation, setMapLoading }: headerProps) => {
   const [ipInfo, setIpInfo] = useState<ipInfo>();
   const [loading, setLoading] = useState<boolean>(true);
   const [query, setQuery] = useState<string>("");
-  const [API, setAPI] = useState<string>("ip-api");
+  const [API, setAPI] = useState<string>("");
 
   // ref
   const ipRef = useRef<HTMLInputElement>(null);
@@ -79,22 +60,11 @@ const Header = ({ setPosition, setLocation, setMapLoading }: headerProps) => {
         errorRef.current.textContent = "Please input an IP address or domain";
         // show the error element
         errorRef.current.classList.remove("opacity-0");
-        // if the value is not a valid ip but an ip only API is selected
-      } else if (
-        !ipRegex({ exact: true }).test(ipRef.current.value) &&
-        (API === "ipgeolocation" || API === "ipwho" || API === "ip2location")
-      ) {
-        // message
-        errorRef.current.textContent = "Selected API only accepts IP Addresses";
-        // show the error element
-        errorRef.current.classList.remove("opacity-0");
       } else {
-        // show loading
-        setLoading(true);
-        setMapLoading(true);
-        // set ip/domain query state
-        // which triggers fetching the data (useEffect())
-        setQuery(ipRef.current!.value.trim());
+        // set ip/domain query state and fetch data
+        const newQuery = ipRef.current!.value.trim();
+        setQuery(newQuery);
+        fetchIpInfo(newQuery);
         // hide error
         errorRef.current?.classList.add("opacity-0");
         // clear and remove focus from the field
@@ -106,32 +76,32 @@ const Header = ({ setPosition, setLocation, setMapLoading }: headerProps) => {
 
   // fetch info from api and show error / info
   // also update position/location state in parent
-  const fetchIpInfo = async () => {
+  const fetchIpInfo = async (query: string) => {
+    if (!API) return;
+
+    // enable loading
     setLoading(true);
-    // set API url for different API providers
-    let res: Response;
-    if (API === "ipify" || API === "ip2location") {
-      const isIp = ipRegex({ exact: true }).test(query);
-      const ip = isIp
-        ? "&ip" + (API === "ipify" ? "Address" : "") + "=" + query
-        : "";
-      const domain = !isIp && query.trim() !== "" ? "&domain=" + query : "";
-      res = await fetch(API_URL[API] + ip + domain);
-    } else if (API === "ip-api" || API === "ipgeolocation" || API === "ipwho") {
-      res = await fetch(API_URL[API] + query);
-    } else return null;
+    setMapLoading(true);
+
+    // fetch the data
+    let url = API_URL + "?token=" + API_TOKEN;
+    // if query is empty (first load)
+    if (!query.trim()) url += "&api=" + API;
+    // if query is valid ip
+    else if (ipRegex({ exact: true }).test(query))
+      url += "&api=" + API + "&ip=" + query;
+    // else get domain
+    else url += "&api=" + API + "&domain=" + query;
+    // variable to store either the data or error message
     let tempIpInfo: ipInfo;
-    let resJson;
-    if (res.ok) {
-      resJson = await res.json();
+    let error = false;
+    let res;
+    try {
+      res = await fetch(url);
+    } catch (_: any) {
+      error = true;
     }
-    // if fetch failed or the "ip-api" API returned an "status" other than "success"
-    // or "ipwho" API's returned "success" was "false", show error
-    if (
-      !res.ok ||
-      (API === "ip-api" && !(resJson.status === "success")) ||
-      (API === "ipwho" && resJson.success === false)
-    ) {
+    if (!res || !res.ok || error) {
       // show error
       const errorMessage = "Error";
       tempIpInfo = {
@@ -140,84 +110,36 @@ const Header = ({ setPosition, setLocation, setMapLoading }: headerProps) => {
         location: errorMessage,
         timezone: errorMessage,
       };
-      toast.error("Error in fetching data from API!", {
-        autoClose: 4000,
+      let toastMessage =
+        "Error fetching data from the API!\nPlease try another API.";
+      // error message if enetered domain was wrong
+      if (res && !res.ok)
+        if ((await res.json()).message === "wrong domain name.")
+          toastMessage = "Wrong domain name!";
+      toast.error(toastMessage, {
+        autoClose: 5000,
         theme: "light",
       });
     } else {
-      // set the data according to the API
-      // and call set Position/Location in parent
-      let ip = "";
-      let isp = "";
-      let location = "";
-      let timezone = "";
-      let position: position = { lat: 0, lng: 0 };
-      if (API === "ipify") {
-        ip = resJson.ip;
-        isp = resJson.isp;
-        location = `${resJson.location.country}, ${resJson.location.region}, ${resJson.location.city} ${resJson.location.postalCode}`;
-        timezone = "UTC" + resJson.location.timezone;
-        position = { lat: resJson.location.lat, lng: resJson.location.lng };
-      } else if (API === "ip-api") {
-        ip = resJson.query;
-        isp = resJson.isp;
-        location = `${resJson.country}, ${resJson.regionName}, ${resJson.city} ${resJson.zip}`;
-        timezone = resJson.timezone;
-        position = { lat: resJson.lat, lng: resJson.lon };
-      } else if (API === "ipgeolocation") {
-        ip = resJson.ip;
-        isp = resJson.isp;
-        location = `${resJson.country_code2}, ${resJson.state_prov}, ${resJson.city} ${resJson.zipcode}`;
-        timezone =
-          resJson.time_zone.name +
-          "\n" +
-          "UTC" +
-          (resJson.time_zone.offset > 0 && "+") +
-          resJson.time_zone.offset;
-        position = { lat: resJson.latitude, lng: resJson.longitude };
-      } else if (API === "ipwho") {
-        ip = resJson.ip;
-        isp = resJson.connection.isp;
-        location = `${resJson.country_code}, ${resJson.region}, ${resJson.city} ${resJson.postal}`;
-        timezone = resJson.timezone.id + "\nUTC" + resJson.timezone.utc;
-        position = {
-          lat: Number(resJson.latitude),
-          lng: Number(resJson.longitude),
-        };
-      } else if (API === "ip2location") {
-        ip = resJson.ip;
-        isp = "N/A";
-        location = `${resJson.country_name}, ${resJson.region_name}, ${resJson.city_name} ${resJson.zip_code}`;
-        timezone = "UTC" + resJson.time_zone;
-        position = {
-          lat: Number(resJson.latitude),
-          lng: Number(resJson.longitude),
-        };
-      }
-
-      tempIpInfo = {
-        ip: ip,
-        isp: isp,
-        location: location,
-        timezone: timezone,
-      };
-      // set map position and popup location in parent
-      setPosition(position);
-      setLocation(location);
+      // update states on success
+      tempIpInfo = await res.json();
+      setPosition({ lat: tempIpInfo.lat, lng: tempIpInfo.lng });
+      setLocation(tempIpInfo.location);
     }
-    // show the data/error set above
+    // set the data/error set above
     setIpInfo(tempIpInfo);
+    // disable loading
     setLoading(false);
     setMapLoading(false);
   };
 
-  // fetch on start and select/query state change
+  // fetch on start and selected API state change
   useEffect(() => {
-    fetchIpInfo();
-  }, [API, query]);
+    fetchIpInfo(query);
+  }, [API]);
 
   return (
-    <header className="relative z-10 flex h-[17.5rem] flex-col items-center justify-center bg-[url('images/pattern-bg-mobile.png')] bg-cover shadow-md shadow-black/30 md:bg-[url('images/pattern-bg-desktop.png')] md:pb-14">
+    <header className="relative z-10 flex h-[17.5rem] flex-col items-center justify-center bg-[url('/images/pattern-bg-mobile.png')] bg-cover shadow-md shadow-black/30 md:bg-[url('/images/pattern-bg-desktop.png')] md:pb-14">
       <h1 className="mb-2 text-[1.6rem] font-[500] text-white md:mb-3 md:text-[2rem]">
         IP Address Tracker
       </h1>
@@ -257,7 +179,10 @@ const Header = ({ setPosition, setLocation, setMapLoading }: headerProps) => {
         <APISelect setAPI={setAPI} API={API} />
       </div>
       <GeoInfo ipInfo={ipInfo} loading={loading} />
-      <ToastContainer />
+      <ToastContainer
+        className="whitespace-pre-line"
+        pauseOnFocusLoss={false}
+      />
     </header>
   );
 };
