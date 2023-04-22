@@ -1,19 +1,22 @@
 // React
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from 'react';
 
 // react-responsive
-import { useMediaQuery } from "react-responsive";
+import { useMediaQuery } from 'react-responsive';
 
 // ip-regex
-import ipRegex from "ip-regex";
+import ipRegex from 'ip-regex';
 
 // toasify
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // components
-import GeoInfo from "./GeoInfo";
-import APISelect from "./APISelect";
+import GeoInfo from './GeoInfo';
+import APISelect from './APISelect';
+
+// utility
+import fetchTimeout from '../utility/utility';
 
 // API data
 const API_URL = import.meta.env.VITE_API_URL;
@@ -39,44 +42,49 @@ const Header = ({ setPosition, setLocation, setMapLoading }: headerProps) => {
   // state
   const [ipInfo, setIpInfo] = useState<ipInfo>();
   const [loading, setLoading] = useState<boolean>(true);
-  const [query, setQuery] = useState<string>("");
-  const [API, setAPI] = useState<string>("");
+  const [query, setQuery] = useState<string>('');
+  const [API, setAPI] = useState<string>('');
+  const [count, setCount] = useState<number>(0);
 
   // ref
-  const ipRef = useRef<HTMLInputElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
 
   // media query to change input place holder on small screens
-  const matches = useMediaQuery({ query: "(min-width:600px)" });
+  const matches = useMediaQuery({ query: '(min-width:600px)' });
 
   // handle form submit
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // get elements
+    const queryElement = (e.target as HTMLFormElement).elements.namedItem(
+      'query'
+    ) as HTMLInputElement;
+    const errorElement: HTMLParagraphElement = errorRef.current!;
     // empty check
-    if (ipRef.current && errorRef.current) {
-      // if the field is empty
-      if (ipRef.current.value.trim() === "") {
-        // message
-        errorRef.current.textContent = "Please input an IP address or domain";
-        // show the error element
-        errorRef.current.classList.remove("opacity-0");
-      } else {
-        // set ip/domain query state and fetch data
-        const newQuery = ipRef.current!.value.trim();
-        setQuery(newQuery);
-        fetchIpInfo(newQuery);
-        // hide error
-        errorRef.current?.classList.add("opacity-0");
-        // clear and remove focus from the field
-        ipRef.current.value = "";
-        ipRef.current.blur();
-      }
+    // if the field is empty
+    if (queryElement.value.trim() === '') {
+      // message
+      errorElement.textContent = 'Please input an IP address or domain';
+      // show the error element
+      errorElement.classList.remove('opacity-0');
+    } else {
+      // set ip/domain query state and fetch data
+      const newQuery = queryElement.value.trim();
+      // if query has not changed, force fetching by changing the count state
+      // so we can fetch the same query again in case there was an error
+      if (queryElement.value === newQuery) setCount((prev) => prev + 1);
+      // else update query
+      else setQuery(newQuery);
+      // hide error
+      errorElement.classList.add('opacity-0');
+      // clear the field
+      queryElement.value = '';
     }
   };
 
   // fetch info from api and show error / info
   // also update position/location state in parent
-  const fetchIpInfo = async (query: string) => {
+  const fetchIpInfo = async (query: string, signal: AbortSignal) => {
     if (!API) return;
 
     // enable loading
@@ -84,26 +92,26 @@ const Header = ({ setPosition, setLocation, setMapLoading }: headerProps) => {
     setMapLoading(true);
 
     // fetch the data
-    let url = API_URL + "?token=" + API_TOKEN;
+    let url = API_URL + '?token=' + API_TOKEN;
     // if query is empty (first load)
-    if (!query.trim()) url += "&api=" + API;
+    if (!query.trim()) url += '&api=' + API;
     // if query is valid ip
     else if (ipRegex({ exact: true }).test(query))
-      url += "&api=" + API + "&ip=" + query;
+      url += '&api=' + API + '&ip=' + query;
     // else get domain
-    else url += "&api=" + API + "&domain=" + query;
+    else url += '&api=' + API + '&domain=' + query;
     // variable to store either the data or error message
     let tempIpInfo: ipInfo;
     let error = false;
     let res;
     try {
-      res = await fetch(url);
+      res = await fetchTimeout(url, { signal, timeout: 10 });
     } catch (_: any) {
       error = true;
     }
     if (!res || !res.ok || error) {
       // show error
-      const errorMessage = "Error";
+      const errorMessage = 'Error';
       tempIpInfo = {
         ip: errorMessage,
         isp: errorMessage,
@@ -111,14 +119,14 @@ const Header = ({ setPosition, setLocation, setMapLoading }: headerProps) => {
         timezone: errorMessage,
       };
       let toastMessage =
-        "Error fetching data from the API!\nPlease try another API.";
+        'Error fetching data from the API!\nPlease try again or select another API.';
       // error message if enetered domain was wrong
       if (res && !res.ok)
-        if ((await res.json()).message === "wrong domain name.")
-          toastMessage = "Wrong domain name!";
+        if ((await res.json()).message === 'wrong domain name.')
+          toastMessage = 'Wrong domain name!';
       toast.error(toastMessage, {
         autoClose: 5000,
-        theme: "light",
+        theme: 'light',
       });
     } else {
       // update states on success
@@ -135,8 +143,13 @@ const Header = ({ setPosition, setLocation, setMapLoading }: headerProps) => {
 
   // fetch on start and selected API state change
   useEffect(() => {
-    fetchIpInfo(query);
-  }, [API]);
+    if (API) {
+      const controller = new AbortController();
+      const signal = controller.signal;
+      fetchIpInfo(query, signal);
+      return () => controller.abort(new DOMException('cleaning up'));
+    }
+  }, [API, query, count]);
 
   return (
     <header className="relative z-10 flex h-[17.5rem] flex-col items-center justify-center bg-[url('/images/pattern-bg-mobile.png')] bg-cover shadow-md shadow-black/30 md:bg-[url('/images/pattern-bg-desktop.png')] md:pb-14">
@@ -151,14 +164,13 @@ const Header = ({ setPosition, setLocation, setMapLoading }: headerProps) => {
           <div className="w-full">
             <input
               type="text"
-              name="ip-domain"
+              name="query"
               placeholder={
                 matches
-                  ? "Search for any IP address or domain"
-                  : "IP address or domain"
+                  ? 'Search for any IP address or domain'
+                  : 'IP address or domain'
               }
               className="h-[3.5rem] w-full rounded-l-2xl px-6 text-lg placeholder:text-darkGray/80 md:w-[31rem]"
-              ref={ipRef}
             />
             <div className="flex items-center justify-between">
               <p

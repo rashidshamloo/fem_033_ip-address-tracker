@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from 'react';
 
 // API data
 const API_URL = import.meta.env.VITE_API_URL;
 const API_TOKEN = import.meta.env.VITE_API_TOKEN;
 
 // toasify
-import { toast } from "react-toastify";
+import { toast } from 'react-toastify';
 
 // utility
-import fetchTimeout from "../utility/utility";
+import fetchTimeout from '../utility/utility';
 
 // interfaces
 interface APISelectProps {
@@ -24,6 +24,8 @@ const APISelect = ({ API, setAPI }: APISelectProps) => {
 
   // handle select change
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    // set localStorage
+    localStorage.setItem('api', e.target.value);
     // set state
     setAPI(e.target.value);
     // unfocus
@@ -32,54 +34,66 @@ const APISelect = ({ API, setAPI }: APISelectProps) => {
 
   // set auto width using a temp select element
   const autoWidth = (element: HTMLSelectElement) => {
-    const tempSelect = document.createElement("select");
-    tempSelect.classList.add("text-xs");
-    tempSelect.classList.add("opacity-0");
-    const tempOption = document.createElement("option");
+    const tempSelect = document.createElement('select');
+    tempSelect.classList.add('text-xs');
+    tempSelect.classList.add('opacity-0');
+    const tempOption = document.createElement('option');
     tempOption.textContent = element.options[element.selectedIndex].text;
     tempSelect.appendChild(tempOption);
     element.after(tempSelect);
     const width = tempSelect.getBoundingClientRect().width;
-    element.style.width = String(width + 8) + "px";
+    element.style.width = String(width + 8) + 'px';
     tempSelect.remove();
   };
 
   // refetch API list
-  const reFetch = (sec: number) => {
+  const reFetch = (sec: number, signal: AbortSignal) => {
     toast.error(
       `Error in fetching API list!\nTrying again in ${sec} seconds.`,
       {
         autoClose: sec * 1000,
-        theme: "light",
+        theme: 'light',
       }
     );
-    setTimeout(fetchApiList, sec * 1000);
+    return setTimeout(() => fetchApiList(signal), sec * 1000);
   };
 
+  let timeoutId: number;
   // gets API list and updates state
-  const fetchApiList = async () => {
-    const url = API_URL + "list?token=" + API_TOKEN;
+  const fetchApiList = async (signal: AbortSignal) => {
+    // localStorage
+    const defaultApi = localStorage.getItem('api');
+
+    const url = API_URL + 'list?token=' + API_TOKEN;
     let error = false;
     let res;
     try {
-      res = await fetchTimeout(url);
+      res = await fetchTimeout(url, { signal, timeout: 5000 });
     } catch (_: any) {
       error = true;
     }
     // refetch on error
     if (!res || !res.ok || error) {
-      reFetch(4);
+      clearTimeout(timeoutId);
+      timeoutId = reFetch(4, signal);
     } else {
       // set API list and API states
       const tempApiList = await res.json();
       setApiList(tempApiList);
-      setAPI(tempApiList[0].name);
+      // set api to defaultApi if set and
+      // if defaultApi is empty set api to the first item
+      setAPI(defaultApi ?? tempApiList[0].name);
     }
   };
 
   // get API list on first load
   useEffect(() => {
-    fetchApiList();
+    const controller = new AbortController();
+    fetchApiList(controller.signal);
+    return () => {
+      timeoutId && clearTimeout(timeoutId);
+      controller.abort('cleaning up.');
+    };
   }, []);
 
   // auto width on API change
@@ -96,7 +110,7 @@ const APISelect = ({ API, setAPI }: APISelectProps) => {
         id="api"
         className="rounded-xl px-1 text-xs transition-all duration-500"
         onChange={handleChange}
-        defaultValue={API}
+        value={API}
         ref={ref}
       >
         {apiList.map((item, index) => {
