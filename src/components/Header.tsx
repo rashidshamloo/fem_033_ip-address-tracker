@@ -73,7 +73,7 @@ const Header = ({ setPosition, setLocation, setMapLoading }: headerProps) => {
       const newQuery = queryElement.value.trim();
       // if query has not changed, force fetching by changing the count state
       // so we can fetch the same query again in case there was an error
-      if (queryElement.value === newQuery) setCount((prev) => prev + 1);
+      if (newQuery === query) setCount((prev) => prev + 1);
       // else update query
       else setQuery(newQuery);
       // hide error
