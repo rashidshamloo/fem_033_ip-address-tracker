@@ -7,9 +7,8 @@ const API_TOKEN = import.meta.env.VITE_API_TOKEN;
 // toasify
 import { toast } from 'react-toastify';
 
-// utility
-import fetchTimeout from '../utility/utility';
-
+// fetchMS
+import { fetchMS as fetch } from 'fetch-multi-signal';
 // interfaces
 interface APISelectProps {
   API: string;
@@ -48,6 +47,7 @@ const APISelect = ({ API, setAPI }: APISelectProps) => {
 
   // refetch API list
   const reFetch = (sec: number, signal: AbortSignal) => {
+    if (signal.aborted) return;
     toast.error(
       `Error in fetching API list!\nTrying again in ${sec} seconds.`,
       {
@@ -58,7 +58,7 @@ const APISelect = ({ API, setAPI }: APISelectProps) => {
     return setTimeout(() => fetchApiList(signal), sec * 1000);
   };
 
-  let timeoutId: number;
+  let timeoutId: number | undefined;
   // gets API list and updates state
   const fetchApiList = async (signal: AbortSignal) => {
     // localStorage
@@ -68,13 +68,13 @@ const APISelect = ({ API, setAPI }: APISelectProps) => {
     let error = false;
     let res;
     try {
-      res = await fetchTimeout(url, { signal, timeout: 5000 });
+      res = await fetch(url, { signal, timeout: 5000 });
     } catch (_: any) {
       error = true;
     }
     // refetch on error
     if (!res || !res.ok || error) {
-      clearTimeout(timeoutId);
+      timeoutId && clearTimeout(timeoutId);
       timeoutId = reFetch(4, signal);
     } else {
       // set API list and API states
@@ -92,7 +92,7 @@ const APISelect = ({ API, setAPI }: APISelectProps) => {
     fetchApiList(controller.signal);
     return () => {
       timeoutId && clearTimeout(timeoutId);
-      controller.abort('cleaning up.');
+      controller.abort(new DOMException('cleaning up', 'AbortError'));
     };
   }, []);
 

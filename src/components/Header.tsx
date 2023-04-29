@@ -16,7 +16,8 @@ import GeoInfo from './GeoInfo';
 import APISelect from './APISelect';
 
 // utility
-import fetchTimeout from '../utility/utility';
+// import fetchTimeout from '../utility/utility';
+import { fetchMS as fetch } from 'fetch-multi-signal';
 
 // API data
 const API_URL = import.meta.env.VITE_API_URL;
@@ -105,7 +106,7 @@ const Header = ({ setPosition, setLocation, setMapLoading }: headerProps) => {
     let error = false;
     let res;
     try {
-      res = await fetchTimeout(url, { signal, timeout: 10 });
+      res = await fetch(url, { signal, timeout: 5000 });
     } catch (_: any) {
       error = true;
     }
@@ -147,7 +148,8 @@ const Header = ({ setPosition, setLocation, setMapLoading }: headerProps) => {
       const controller = new AbortController();
       const signal = controller.signal;
       fetchIpInfo(query, signal);
-      return () => controller.abort(new DOMException('cleaning up'));
+      return () =>
+        controller.abort(new DOMException('cleaning up', 'AbortError'));
     }
   }, [API, query, count]);
 
