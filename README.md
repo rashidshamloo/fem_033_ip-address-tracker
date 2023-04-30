@@ -83,6 +83,7 @@ This is a solution to the [IP Address Tracker challenge on Frontend Mentor](http
 - Using `.env` and `.env.local` files to store API keys and importing them with `import.meta.env.VARIABLE`
 - Implementing auto size/width for the API select element using a temp select element's width
 - Aborting a fetch request in `useEffect()` on component unmount by returning a clean-up function and AbortController/Signal
+- Saving API choice to `localStorage` and using it as default the next time app loads
 - Implementing a back-end API using Node.js and Express 
 - Moved all Public API requests and formatting of responses to the back-end. so in the front-end i can make a request to it and receive nicely formatted JSON while the API keys are hidden.
 - What `cors` is and implementing 'cors' in the back-end API to only allow `Origin` of `https://rashidshamloo.github.io` using `cors()` middleware
