@@ -24,7 +24,7 @@
   "email": "rashidshamloo@gmail.com",
   "license": "GPL-3.0",
   "dependencies": {
-    "fetch-multi-signal": "^1.0.0",
+    "fetch-multi-signal": "^1.0.3",
     "ip-regex": "^5.0.0",
     "leaflet": "^1.9.3",
     "react": "^18.2.0",

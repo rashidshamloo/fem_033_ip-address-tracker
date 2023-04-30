@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { useState } from 'react';
 
 // react-leaflet
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 
 // components
-import Header from "./components/Header";
-import SetMapCenter from "./components/SetMapCenter";
-import Loading from "./components/Loading";
-import Credits from "./components/Credits";
+import Header from './components/Header';
+import SetMapCenter from './components/SetMapCenter';
+import Loading from './components/Loading';
+import Credits from './components/Credits';
 
 // interfaces
 export interface position {
@@ -35,12 +35,13 @@ function App() {
       />
       <main className="relative flex-1">
         {mapLoading && <Loading map={true} />}
-        <div className={"h-full " + (firstMapLoad ? "opacity-0" : "")}>
+        <div className={'h-full ' + (firstMapLoad ? 'opacity-0' : '')}>
           <MapContainer
             className="z-[0] h-full"
             center={[38.8693, -77.0536]}
             zoom={13}
             scrollWheelZoom={false}
+            zoomControl={false}
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
